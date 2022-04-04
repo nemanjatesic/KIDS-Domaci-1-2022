@@ -11,6 +11,7 @@ import javafx.stage.Stage;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -43,12 +44,17 @@ public class App extends Application {
 				MainView.cacheOutput.stop();
 			}
 
-			App.inputThreadPool.shutdown();
-			App.outputThreadPool.shutdown();
-			App.cruncherThreadPool.shutdown();
+			try {
+				App.inputThreadPool.awaitTermination(20, TimeUnit.SECONDS);
+				App.outputThreadPool.awaitTermination(20, TimeUnit.SECONDS);
+				App.cruncherThreadPool.awaitTermination(20, TimeUnit.SECONDS);
 
-			if (CounterCruncher.threadPoolForCheckingIfTaskIsDone != null) {
-				CounterCruncher.threadPoolForCheckingIfTaskIsDone.shutdown();
+				if (CounterCruncher.threadPoolForCheckingIfTaskIsDone != null) {
+					CounterCruncher.threadPoolForCheckingIfTaskIsDone.awaitTermination(20, TimeUnit.SECONDS);
+				}
+			} catch (InterruptedException interruptedException) {
+				interruptedException.printStackTrace();
+				System.exit(0);
 			}
 		});
 

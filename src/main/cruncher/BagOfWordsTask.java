@@ -3,6 +3,7 @@ package main.cruncher;
 import javafx.util.Pair;
 import main.logger.Logger;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +17,8 @@ public class BagOfWordsTask extends RecursiveTask<Map<ListOfWords<Integer>, Inte
     private final String fileContent;
     private final List<Pair<Integer, Integer>> chunkLocations;
 
-    public BagOfWordsTask(int arity, int counterLimit, int start, int end, String fileContent, List<Pair<Integer, Integer>> chunkLocations) {
+    public BagOfWordsTask(int arity, int counterLimit, int start, int end, String fileContent,
+            List<Pair<Integer, Integer>> chunkLocations) {
         this.arity = arity;
         this.counterLimit = counterLimit;
         this.start = start;
@@ -33,29 +35,64 @@ public class BagOfWordsTask extends RecursiveTask<Map<ListOfWords<Integer>, Inte
                 Pair<Integer, Integer> pair = chunkLocations.get(start);
                 int startIndex = pair.getKey();
                 int endIndex = pair.getValue();
-                String[] words = fileContent.substring(startIndex, endIndex).split(" ");
-                int operationsThatHappened;
-                for (int wordCount = 0 ; wordCount < words.length ; ) {
-                    ListOfWords<Integer> listOfWords = new ListOfWords<>();
-                    operationsThatHappened = 0;
-                    for (int i = 0 ; i < arity && wordCount < words.length; i++) {
-                        operationsThatHappened++;
-                        String s = words[wordCount];
-                        listOfWords.addToList(s.hashCode());
-                        wordCount++;
+
+//                 String[] words = fileContent.substring(startIndex, endIndex).split(" ");
+//                 int operationsThatHappened;
+//                 for (int wordCount = 0 ; wordCount < words.length ; ) {
+//                 ListOfWords<Integer> listOfWords = new ListOfWords<>();
+//                 operationsThatHappened = 0;
+//                 for (int i = 0 ; i < arity && wordCount < words.length; i++) {
+//                 operationsThatHappened++;
+//                 String s = words[wordCount];
+//                 listOfWords.addToList(s.hashCode());
+//                 wordCount++;
+//                 }
+//                 wordCount -= (operationsThatHappened - 1);
+//                 // Idk just in case
+//                 if (listOfWords.getList().size() == arity) {
+//                 toReturn.putIfAbsent(listOfWords, 0);
+//                 toReturn.put(listOfWords, toReturn.get(listOfWords) + 1);
+//                 }
+//                 }
+//                 // There you go little garbage collector do your job
+//                 words = null;
+
+
+                ListOfWords<Integer> listOfWords = new ListOfWords<>();
+                StringBuilder stringBuilder = new StringBuilder("");
+                int currentWord = 0;
+                char ch;
+                int toRemove = 0;
+
+                for (int i = startIndex; i < endIndex; i++) {
+                    ch = fileContent.charAt(i);
+                    if (currentWord != 0) {
+                        toRemove++;
                     }
-                    wordCount -= (operationsThatHappened - 1);
-                    // Idk just in case
-                    if (listOfWords.getList().size() == arity) {
-                        toReturn.putIfAbsent(listOfWords, 0);
-                        toReturn.put(listOfWords, toReturn.get(listOfWords) + 1);
+
+                    if (ch == ' ') {
+                        String str = stringBuilder.toString();
+                        stringBuilder.delete(0, str.length());
+                        listOfWords.addToList(str.hashCode());
+                        currentWord++;
+
+                        if (currentWord == arity) {
+                            toReturn.putIfAbsent(listOfWords, 0);
+                            toReturn.put(listOfWords, toReturn.get(listOfWords) + 1);
+
+                            listOfWords = new ListOfWords<>();
+                            currentWord = 0;
+
+                            i = i - toRemove;
+                            toRemove = 0;
+                        }
+                    } else {
+                        stringBuilder.append(ch);
                     }
                 }
 
-                // There you go little garbage collector do your job
-                words = null;
             } else {
-                int mid = ((end - start) / 2 ) + start;
+                int mid = ((end - start) / 2) + start;
 
                 BagOfWordsTask left = new BagOfWordsTask(arity, counterLimit, start, mid, fileContent, chunkLocations);
                 BagOfWordsTask right = new BagOfWordsTask(arity, counterLimit, mid, end, fileContent, chunkLocations);

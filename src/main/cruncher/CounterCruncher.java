@@ -24,7 +24,7 @@ public class CounterCruncher implements Runnable {
 	private final ObservableList<String> crunchingFilePaths;
 	private final BlockingQueue<FileNameAndContent> inputQue;
 	private final CopyOnWriteArrayList<CacheOutput> outputs = new CopyOnWriteArrayList<>();
-	
+
 	public CounterCruncher(int arity, ObservableList<String> crunchingFilePaths) {
 		this.crunchingFilePaths = crunchingFilePaths;
 		this.arity = arity;
@@ -32,10 +32,11 @@ public class CounterCruncher implements Runnable {
 		this.counterLimit = Integer.parseInt(Config.getProperty("counter_data_limit"));
 		this.inputQue = new LinkedBlockingQueue<>();
 	}
-	
+
 	@Override
 	public void run() {
-		Logger.info("Started running CounterCruncher, thread name: " + Thread.currentThread().getName() + ", thread id: " + Thread.currentThread().getId());
+		Logger.info("Started running CounterCruncher, thread name: " + Thread.currentThread().getName()
+				+ ", thread id: " + Thread.currentThread().getId());
 		FileNameAndContent currentFileNameAndContent;
 		while (true) {
 			try {
@@ -56,11 +57,11 @@ public class CounterCruncher implements Runnable {
 				String currentContent = currentFileNameAndContent.getContent();
 				int fileContentLen = currentContent.length();
 				int defaultChunkSize = counterLimit;
-				int numberOfChunks = (int)Math.ceil(fileContentLen * 1.0D / defaultChunkSize);
+				int numberOfChunks = (int) Math.ceil(fileContentLen * 1.0D / defaultChunkSize);
 				List<Pair<Integer, Integer>> startEndPoints = new CopyOnWriteArrayList<>();
 
 				int currentlyLast = 0;
-				for (int i = 0 ; i < numberOfChunks; i++) {
+				for (int i = 0; i < numberOfChunks; i++) {
 					int currentStart = currentlyLast;
 					int currentEnd = currentStart + defaultChunkSize;
 
@@ -81,7 +82,8 @@ public class CounterCruncher implements Runnable {
 				}
 				startEndPoints.forEach(System.out::println);
 
-				Future<Map<ListOfWords<Integer>, Integer>> future = App.cruncherThreadPool.submit(new BagOfWordsTask(arity, counterLimit, 0, startEndPoints.size(), currentContent, startEndPoints));
+				Future<Map<ListOfWords<Integer>, Integer>> future = App.cruncherThreadPool.submit(new BagOfWordsTask(
+						arity, counterLimit, 0, startEndPoints.size(), currentContent, startEndPoints));
 
 				List<CacheOutput> copiedCacheOutputs = new ArrayList<>(this.outputs);
 				for (CacheOutput cacheOutput : copiedCacheOutputs) {
@@ -97,33 +99,41 @@ public class CounterCruncher implements Runnable {
 
 					}
 
-					threadPoolForCheckingIfTaskIsDone.submit(new CheckIfTaskDone(futureAndFileName, cacheOutput.getResultList(), crunchingFilePaths, fileName));
+					threadPoolForCheckingIfTaskIsDone.submit(new CheckIfTaskDone(futureAndFileName,
+							cacheOutput.getResultList(), crunchingFilePaths, fileName));
 				}
 				currentFileNameAndContent = null;
 				System.gc();
 
-////				Future<Map<ListOfWords<Integer>, Integer>> future = App.cruncherThreadPool.submit(new BagOfWordsTask(arity, counterLimit, 0, currentFileNameAndContent.getContent().length(), currentFileNameAndContent.getContent()));
-////				output.keySet().stream().sorted((a, b) -> output.get(b) - output.get(a)).limit(100).forEach(str -> Logger.debug(String.format("STRING: [%s], value: [%d]", str.getList().get(0), output.get(str))));
-////
-////
-//				// TODO: Delete this
-//				Map<ListOfWords<Integer>, Integer> output = future.get();
-//				List<ListOfWords<Integer>> list = output.keySet().stream().sorted((a, b) -> output.get(b) - output.get(a)).limit(100).collect(Collectors.toList());
-////				list.forEach(low -> {
-////					low.getList().forEach(str -> System.out.print(str + ", "));
-////					System.out.print(" -> ");
-////					System.out.println(output.get(low));
-////				});
-//				XYChart.Series<Number, Number> series = new XYChart.Series<>();
-//				for (int i = 0 ; i < list.size() ; i++) {
-//					series.getData().add(new XYChart.Data<>(i, output.get(list.get(i))));
-//				}
-//
-//				Platform.runLater(() -> {
-//					MainView.lineChart.getData().clear();
-//					MainView.lineChart.getData().addAll(series);
-//				});
-//				// TODO: Delete this
+				//// Future<Map<ListOfWords<Integer>, Integer>> future =
+				//// App.cruncherThreadPool.submit(new BagOfWordsTask(arity, counterLimit, 0,
+				//// currentFileNameAndContent.getContent().length(),
+				//// currentFileNameAndContent.getContent()));
+				//// output.keySet().stream().sorted((a, b) -> output.get(b) -
+				//// output.get(a)).limit(100).forEach(str ->
+				//// Logger.debug(String.format("STRING: [%s], value: [%d]",
+				//// str.getList().get(0), output.get(str))));
+				////
+				////
+				// // TODO: Delete this
+				// Map<ListOfWords<Integer>, Integer> output = future.get();
+				// List<ListOfWords<Integer>> list = output.keySet().stream().sorted((a, b) ->
+				//// output.get(b) - output.get(a)).limit(100).collect(Collectors.toList());
+				//// list.forEach(low -> {
+				//// low.getList().forEach(str -> System.out.print(str + ", "));
+				//// System.out.print(" -> ");
+				//// System.out.println(output.get(low));
+				//// });
+				// XYChart.Series<Number, Number> series = new XYChart.Series<>();
+				// for (int i = 0 ; i < list.size() ; i++) {
+				// series.getData().add(new XYChart.Data<>(i, output.get(list.get(i))));
+				// }
+				//
+				// Platform.runLater(() -> {
+				// MainView.lineChart.getData().clear();
+				// MainView.lineChart.getData().addAll(series);
+				// });
+				// // TODO: Delete this
 			} catch (Exception e) {
 				if (Logger.debugEnabled) {
 					e.printStackTrace();
@@ -131,7 +141,8 @@ public class CounterCruncher implements Runnable {
 				return;
 			}
 		}
-		Logger.info("Finished running CounterCruncher, thread name: " + Thread.currentThread().getName() + ", thread id: " + Thread.currentThread().getId());
+		Logger.info("Finished running CounterCruncher, thread name: " + Thread.currentThread().getName()
+				+ ", thread id: " + Thread.currentThread().getId());
 	}
 
 	@Override

@@ -20,7 +20,8 @@ public class Summation implements Callable<Map<ListOfWords<Integer>, Integer>> {
     private final String selectedName;
     private final ObservableList<String> resultList;
 
-    public Summation(List<String> selectedResults, CacheOutput cacheOutput, String selectedName, ObservableList<String> resultList) {
+    public Summation(List<String> selectedResults, CacheOutput cacheOutput, String selectedName,
+            ObservableList<String> resultList) {
         this.selectedResults = selectedResults;
         this.cacheOutput = cacheOutput;
         this.selectedName = selectedName;
@@ -38,9 +39,12 @@ public class Summation implements Callable<Map<ListOfWords<Integer>, Integer>> {
                 MainView.right.getChildren().add(progressBar);
             });
 
-            var wrapper = new Object(){ int summationCurrentProgressCounter = 0; };
+            var wrapper = new Object() {
+                int summationCurrentProgressCounter = 0;
+            };
             Map<ListOfWords<Integer>, Integer> toReturn = new HashMap<>();
-            List<Map<ListOfWords<Integer>, Integer>> listOfSelected = selectedResults.stream().map(res -> cacheOutput.take(res.replace("*", ""))).collect(Collectors.toList());
+            List<Map<ListOfWords<Integer>, Integer>> listOfSelected = selectedResults.stream()
+                    .map(res -> cacheOutput.take(res.replace("*", ""))).collect(Collectors.toList());
 
             int listSize = listOfSelected.size();
 

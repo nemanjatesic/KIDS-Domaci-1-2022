@@ -24,7 +24,8 @@ public class CacheOutput implements Runnable {
 
     @Override
     public void run() {
-        Logger.info("Started running CacheOutput, thread name: " + Thread.currentThread().getName() + ", thread id: " + Thread.currentThread().getId());
+        Logger.info("Started running CacheOutput, thread name: " + Thread.currentThread().getName() + ", thread id: "
+                + Thread.currentThread().getId());
         while (true) {
             try {
                 BOWFutureAndFileName futureAndFileName = inputQue.take();
@@ -35,15 +36,18 @@ public class CacheOutput implements Runnable {
 
                 filePathToResult.put(futureAndFileName.getFilePath(), futureAndFileName.getBowFuture());
 
-                Logger.info(String.format("CacheOutput added futureAndFileName object with path: [%s] into filePathToResult map", futureAndFileName.getFilePath()));
+                Logger.info(String.format(
+                        "CacheOutput added futureAndFileName object with path: [%s] into filePathToResult map",
+                        futureAndFileName.getFilePath()));
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
-        Logger.info("Finished running CacheOutput, thread name: " + Thread.currentThread().getName() + ", thread id: " + Thread.currentThread().getId());
+        Logger.info("Finished running CacheOutput, thread name: " + Thread.currentThread().getName() + ", thread id: "
+                + Thread.currentThread().getId());
     }
 
-    public Map<ListOfWords<Integer>,Integer> poll(String resultName) {
+    public Map<ListOfWords<Integer>, Integer> poll(String resultName) {
         var result = filePathToResult.get(resultName);
         if (result.isDone()) {
             try {
@@ -55,7 +59,7 @@ public class CacheOutput implements Runnable {
         return null;
     }
 
-    public Map<ListOfWords<Integer>,Integer> take(String str) {
+    public Map<ListOfWords<Integer>, Integer> take(String str) {
         try {
             return filePathToResult.get(str).get();
         } catch (ExecutionException | InterruptedException e) {

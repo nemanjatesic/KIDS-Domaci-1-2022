@@ -91,7 +91,8 @@ public class MainView {
 
 		addFileInput = new Button("Add FileInput");
 		int sleeptime = Integer.parseInt(Config.getProperty("file_input_sleep_time"));
-		addFileInput.setOnAction(e -> addFileInput(new FileInput(sleeptime, disks.getSelectionModel().getSelectedItem())));
+		addFileInput
+				.setOnAction(e -> addFileInput(new FileInput(sleeptime, disks.getSelectionModel().getSelectedItem())));
 		VBox.setMargin(addFileInput, new Insets(5, 0, 10, 0));
 		addFileInput.setMinWidth(120);
 		addFileInput.setMaxWidth(120);
@@ -114,13 +115,12 @@ public class MainView {
 
 		left.getChildren().add(scrollPane);
 
-		
 		try {
 			String[] disksArray = Config.getProperty("disks").split(";");
 			for (String disk : disksArray) {
 				File file = new File(disk);
 				System.out.println(file.getAbsolutePath());
-				if(!file.exists() || !file.isDirectory()) {
+				if (!file.exists() || !file.isDirectory()) {
 					System.out.println("here");
 					throw new Exception("Bad directory path");
 				}
@@ -241,7 +241,8 @@ public class MainView {
 		List<String> selectedItems = this.results.getSelectionModel().getSelectedItems();
 
 		if (selectedItems.size() != 1) {
-			Logger.warning("Selected items are either 0 or selected items are longer then 1, actual size: " + selectedItems.size());
+			Logger.warning("Selected items are either 0 or selected items are longer then 1, actual size: "
+					+ selectedItems.size());
 			return;
 		}
 
@@ -259,7 +260,8 @@ public class MainView {
 			return;
 		}
 
-		App.outputThreadPool.submit(new SortOutput(result, Integer.parseInt(Config.getProperty("sort_progress_limit"))));
+		App.outputThreadPool
+				.submit(new SortOutput(result, Integer.parseInt(Config.getProperty("sort_progress_limit"))));
 		Logger.info("Future is done!");
 	}
 
@@ -367,11 +369,11 @@ public class MainView {
 	}
 
 	public void stopCrunchers() {
-		
+
 	}
 
 	public void stopFileInputs() {
-		
+
 	}
 
 	public void removeCruncher(CruncherView cruncherView) {
