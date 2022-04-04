@@ -3,9 +3,10 @@ package main.view;
 import java.io.File;
 import java.util.ArrayList;
 
-import main.model.Cruncher;
+import main.input.FileInput;
+import main.logger.Logger;
+import main.cruncher.CounterCruncher;
 import main.model.Directory;
-import main.model.FileInput;
 import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
@@ -22,9 +23,9 @@ public class FileInputView {
 	MainView mainView;
 	Pane main;
 	FileInput fileInput;
-	ListView<Cruncher> linkedCrunchers;
+	ListView<CounterCruncher> linkedCrunchers;
 	ListView<Directory> directories;
-	ComboBox<Cruncher> availableCrunchers;
+	ComboBox<CounterCruncher> availableCrunchers;
 	Button linkCrucher;
 	Button unlinkCruncher;
 	Button addDirectory;
@@ -32,6 +33,7 @@ public class FileInputView {
 	Button start;
 	Button removeDiskInput;
 	Text status;
+	Thread fileInputComponentThread;
 
 	public FileInputView(FileInput fileInput, MainView mainView) {
 		this.mainView = mainView;
@@ -44,7 +46,7 @@ public class FileInputView {
 
 		int width = 210;
 
-		linkedCrunchers = new ListView<Cruncher>();
+		linkedCrunchers = new ListView<CounterCruncher>();
 		linkedCrunchers.setMinWidth(width);
 		linkedCrunchers.setMaxWidth(width);
 		linkedCrunchers.setMinHeight(150);
@@ -52,7 +54,7 @@ public class FileInputView {
 		linkedCrunchers.getSelectionModel().selectedItemProperty().addListener(e -> updateUnlinkCruncherButtonEnabled());
 		main.getChildren().add(linkedCrunchers);
 
-		availableCrunchers = new ComboBox<Cruncher>();
+		availableCrunchers = new ComboBox<CounterCruncher>();
 		availableCrunchers.setMinWidth(width / 2 - 10);
 		availableCrunchers.setMaxWidth(width / 2 - 10);
 		availableCrunchers.getSelectionModel().selectedItemProperty().addListener(e -> updateLinkCruncherButtonEnabled());
@@ -107,7 +109,18 @@ public class FileInputView {
 		main.getChildren().add(hBox);
 
 		start = new Button("Start");
-		start.setOnAction(e -> start());
+		start.setOnAction(e -> {
+			var isStopped = this.fileInput.getStopped().get();
+			if (isStopped) {
+				this.fileInput.getStopped().set(false);
+				Logger.debug("First if, fileinput currently: " + this.fileInput.getStopped().get());
+				start.setText("Pause");
+			} else {
+				this.fileInput.getStopped().set(true);
+				Logger.debug("Second if, fileinput currently: " + this.fileInput.getStopped().get());
+				start.setText("Start");
+			}
+		});
 		start.setMinWidth(width);
 		start.setMaxWidth(width);
 		VBox.setMargin(start, new Insets(15, 0, 0, 0));
@@ -121,8 +134,13 @@ public class FileInputView {
 		main.getChildren().add(removeDiskInput);
 
 		status = new Text("Idle");
+		status.textProperty().bind(fileInput.getWorkScheduler().messageProperty());
+
 		VBox.setMargin(status, new Insets(5, 0, 0, 0));
 		main.getChildren().add(status);
+
+		fileInputComponentThread = new Thread(this.fileInput);
+		fileInputComponentThread.start();
 	}
 
 	private void updateRemoveDirectoryButtonEnabled() {
@@ -134,9 +152,9 @@ public class FileInputView {
 	}
 	
 	private void updateLinkCruncherButtonEnabled() {
-		Cruncher cruncher =  availableCrunchers.getSelectionModel().getSelectedItem();
+		CounterCruncher cruncher =  availableCrunchers.getSelectionModel().getSelectedItem();
 		if(cruncher != null) {
-			for(Cruncher linkedCruncher: linkedCrunchers.getItems()) {
+			for(CounterCruncher linkedCruncher: linkedCrunchers.getItems()) {
 				if(cruncher == linkedCruncher) {
 					linkCrucher.setDisable(true);
 					return;
@@ -153,7 +171,7 @@ public class FileInputView {
 	}
 	
 
-	public void updateAvailableCrunchers(ArrayList<Cruncher> crunchers) {
+	public void updateAvailableCrunchers(ArrayList<CounterCruncher> crunchers) {
 		availableCrunchers.getItems().clear();
 		if (crunchers == null || crunchers.size() == 0) {
 			return;
@@ -162,18 +180,20 @@ public class FileInputView {
 		availableCrunchers.getSelectionModel().select(0);
 	}
 
-	private void linkCruncher(Cruncher cruncher) {
+	private void linkCruncher(CounterCruncher cruncher) {
 		linkedCrunchers.getItems().add(cruncher);
+		this.fileInput.addCruncher(cruncher);
 		updateLinkCruncherButtonEnabled();
 	}
 	
-	public void removeLinkedCruncher(Cruncher cruncher) {
+	public void removeLinkedCruncher(CounterCruncher cruncher) {
 		linkedCrunchers.getItems().remove(cruncher);
 		updateLinkCruncherButtonEnabled();
 	}
 
-	private void unlinkCruncher(Cruncher cruncher) {
+	private void unlinkCruncher(CounterCruncher cruncher) {
 		linkedCrunchers.getItems().remove(cruncher);
+		this.fileInput.removeCruncher(cruncher);
 		updateLinkCruncherButtonEnabled();
 	}
 
@@ -194,15 +214,13 @@ public class FileInputView {
 			}
 			Directory directory = new Directory(fileDirectory);
 			directories.getItems().add(directory);
+			fileInput.addDirectory(directory.directory.getAbsolutePath());
 		}
 	}
 
 	private void removeDirectory(Directory directory) {
 		directories.getItems().remove(directory);
-	}
-
-	private void start() {
-		
+		fileInput.removeDirectory(directory.directory.getAbsolutePath());
 	}
 
 	private void removeDiskInput() {

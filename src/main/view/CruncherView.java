@@ -1,24 +1,36 @@
 package main.view;
 
-import main.model.Cruncher;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.scene.control.ListView;
+import main.cruncher.CounterCruncher;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
+import main.output.CacheOutput;
 
 public class CruncherView {
+	private final MainView mainView;
+	private final CounterCruncher cruncher;
 
-	private MainView mainView;
-	private Cruncher cruncher;
-	private Text status;
+	private final Pane main;
+	private final ObservableList<String> crunchingFilePaths;
 
-	private Pane main;
+	private final CacheOutput cacheOutput;
 
-	public CruncherView(MainView mainView, Cruncher cruncher) {
+	private final Thread cruncherComponentThread;
+
+	public CruncherView(MainView mainView, int arity, CacheOutput cacheOutput) {
+		this.cacheOutput = cacheOutput;
 		this.mainView = mainView;
-		this.cruncher = cruncher;
-		
+		this.crunchingFilePaths = FXCollections.observableArrayList();
+		var crunchListView = new ListView<>(this.crunchingFilePaths);
+
+		this.cruncher = new CounterCruncher(arity, this.crunchingFilePaths);
+		this.cruncher.addOutput(cacheOutput);
+
 		main = new VBox();
 
 		Text text = new Text("Name: " + cruncher.toString());
@@ -34,10 +46,18 @@ public class CruncherView {
 		main.getChildren().add(remove);
 		VBox.setMargin(remove, new Insets(0, 0, 5, 0));
 
-		status = new Text("");
+		Text status = new Text("Crunching:");
 		main.getChildren().add(status);
 
+		crunchListView.setMaxWidth(120);
+		crunchListView.setMaxHeight(200);
+
+		main.getChildren().add(crunchListView);
+
 		VBox.setMargin(main, new Insets(0, 0, 15, 0));
+
+		cruncherComponentThread = new Thread(cruncher);
+		cruncherComponentThread.start();
 	}
 
 	public Pane getCruncherView() {
@@ -48,11 +68,19 @@ public class CruncherView {
 		mainView.removeCruncher(this);
 	}
 
-	public Cruncher getCruncher() {
+	public CounterCruncher getCruncher() {
 		return cruncher;
 	}
 
 	public MainView getMainView() {
 		return mainView;
+	}
+
+	public ObservableList<String> getCrunchingFilePaths() {
+		return crunchingFilePaths;
+	}
+
+	public Thread getCruncherComponentThread() {
+		return cruncherComponentThread;
 	}
 }

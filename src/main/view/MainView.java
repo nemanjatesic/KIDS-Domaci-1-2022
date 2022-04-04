@@ -2,12 +2,20 @@ package main.view;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Future;
 
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import main.app.App;
 import main.app.Config;
-import main.model.Cruncher;
+import main.cruncher.ListOfWords;
+import main.input.FileInput;
+import main.cruncher.CounterCruncher;
+import main.logger.Logger;
 import main.model.Disk;
-import main.model.FileInput;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.chart.LineChart;
@@ -26,27 +34,33 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
+import main.output.CacheOutput;
+import main.output.SortOutput;
+import main.output.Summation;
 
 public class MainView {
 	private Stage stage;
 	private ComboBox<Disk> disks;
 	private HBox left;
 	private VBox fileInput, cruncher;
-	private Pane center, right;
+	public static Pane center, right;
 	private ListView<String> results;
 	private Button addFileInput, singleResult, sumResult;
-	private ArrayList<FileInputView> fileInputViews;
-	private LineChart<Number, Number> lineChart;
-	private ArrayList<Cruncher> availableCrunchers;
+	public static ArrayList<FileInputView> fileInputViews;
+	public static LineChart<Number, Number> lineChart;
+	private ArrayList<CounterCruncher> availableCrunchers;
 
-	private Button addCruncher;
+	private ObservableList<String> outputResultList;
+	public static CacheOutput cacheOutput;
 
 	public void initMainView(BorderPane borderPane, Stage stage) {
+		outputResultList = FXCollections.observableArrayList();
+		cacheOutput = new CacheOutput(outputResultList, Integer.parseInt(Config.getProperty("sort_progress_limit")));
 
 		this.stage = stage;
 
-		fileInputViews = new ArrayList<FileInputView>();
-		availableCrunchers = new ArrayList<Cruncher>();
+		fileInputViews = new ArrayList<>();
+		availableCrunchers = new ArrayList<>();
 
 		left = new HBox();
 
@@ -59,6 +73,8 @@ public class MainView {
 		initCenter(borderPane);
 
 		initRight(borderPane);
+
+		App.outputThreadPool.submit(cacheOutput);
 	}
 
 	private void initFileInput() {
@@ -74,7 +90,8 @@ public class MainView {
 		fileInput.getChildren().add(disks);
 
 		addFileInput = new Button("Add FileInput");
-		addFileInput.setOnAction(e -> addFileInput(new FileInput(disks.getSelectionModel().getSelectedItem())));
+		int sleeptime = Integer.parseInt(Config.getProperty("file_input_sleep_time"));
+		addFileInput.setOnAction(e -> addFileInput(new FileInput(sleeptime, disks.getSelectionModel().getSelectedItem())));
 		VBox.setMargin(addFileInput, new Insets(5, 0, 10, 0));
 		addFileInput.setMinWidth(120);
 		addFileInput.setMaxWidth(120);
@@ -134,7 +151,7 @@ public class MainView {
 		cruncher.getChildren().add(text);
 		VBox.setMargin(text, new Insets(0, 0, 5, 0));
 
-		addCruncher = new Button("Add cruncher");
+		Button addCruncher = new Button("Add cruncher");
 		addCruncher.setOnAction(e -> addCruncher());
 		cruncher.getChildren().add(addCruncher);
 		VBox.setMargin(addCruncher, new Insets(0, 0, 15, 0));
@@ -168,7 +185,7 @@ public class MainView {
 		right.setPadding(new Insets(10));
 		right.setMaxWidth(200);
 
-		results = new ListView<String>();
+		results = new ListView<String>(this.outputResultList);
 		right.getChildren().add(results);
 		VBox.setMargin(results, new Insets(0, 0, 10, 0));
 		results.getSelectionModel().selectedItemProperty().addListener(e -> updateResultButtons());
@@ -220,11 +237,72 @@ public class MainView {
 	}
 
 	private void getSingleResult() {
-		
+		// This list must always be of 1 element but do check just in case
+		List<String> selectedItems = this.results.getSelectionModel().getSelectedItems();
+
+		if (selectedItems.size() != 1) {
+			Logger.warning("Selected items are either 0 or selected items are longer then 1, actual size: " + selectedItems.size());
+			return;
+		}
+
+		String selected = selectedItems.get(0);
+		// Just in case
+		if (selected.startsWith("*")) {
+			this.resultNotReadyWarning();
+			return;
+		}
+
+		Map<ListOfWords<Integer>, Integer> result = this.cacheOutput.poll(selected);
+
+		if (result == null) {
+			this.resultNotReadyWarning();
+			return;
+		}
+
+		App.outputThreadPool.submit(new SortOutput(result, Integer.parseInt(Config.getProperty("sort_progress_limit"))));
+		Logger.info("Future is done!");
+	}
+
+	private void resultNotReadyWarning() {
+		Alert alert = new Alert(AlertType.WARNING);
+		alert.setTitle("Error");
+		alert.setHeaderText("Result not ready yet!");
+		alert.setContentText(null);
+		alert.showAndWait();
+	}
+
+	private void unknownErrorOccurredWarning() {
+		Alert alert = new Alert(AlertType.WARNING);
+		alert.setTitle("Error");
+		alert.setHeaderText("An unknown error occurred");
+		alert.setContentText(null);
+		alert.showAndWait();
 	}
 
 	private void sumResults() {
-		
+		TextInputDialog dialog = new TextInputDialog("sum");
+		dialog.setTitle("Confirmation");
+		dialog.setHeaderText("Enter unique sum name");
+
+		Optional<String> optionalResult = dialog.showAndWait();
+		if (optionalResult.isEmpty()) {
+			return;
+		}
+
+		String name = optionalResult.get();
+		if (this.cacheOutput.getResultList().contains(name) || this.cacheOutput.getResultList().contains("*" + name)) {
+			Alert alert = new Alert(AlertType.WARNING);
+			alert.setTitle("Error");
+			alert.setHeaderText("That name already exists");
+			alert.setContentText(null);
+			alert.showAndWait();
+			return;
+		}
+
+		List<String> selectedItems = this.results.getSelectionModel().getSelectedItems();
+
+		Summation summation = new Summation(selectedItems, this.cacheOutput, name, this.cacheOutput.getResultList());
+		cacheOutput.sum(name, summation);
 	}
 
 	public void addFileInput(FileInput fileInput) {
@@ -245,7 +323,7 @@ public class MainView {
 		updateEnableAddFileInput();
 	}
 
-	public void updateCrunchers(ArrayList<Cruncher> crunchers) {
+	public void updateCrunchers(ArrayList<CounterCruncher> crunchers) {
 		for (FileInputView fileInputView : fileInputViews) {
 			fileInputView.updateAvailableCrunchers(crunchers);
 		}
@@ -265,7 +343,7 @@ public class MainView {
 		result.ifPresent(res -> {
 			try {
 				int arity = Integer.parseInt(res);
-				for (Cruncher cruncher : availableCrunchers) {
+				for (CounterCruncher cruncher : availableCrunchers) {
 					if (cruncher.getArity() == arity) {
 						Alert alert = new Alert(AlertType.WARNING);
 						alert.setTitle("Error");
@@ -275,10 +353,9 @@ public class MainView {
 						return;
 					}
 				}
-				Cruncher cruncher = new Cruncher(arity);
-				CruncherView cruncherView = new CruncherView(this, cruncher);
+				CruncherView cruncherView = new CruncherView(this, arity, this.cacheOutput);
 				this.cruncher.getChildren().add(cruncherView.getCruncherView());
-				availableCrunchers.add(cruncher);
+				availableCrunchers.add(cruncherView.getCruncher());
 				updateCrunchers(availableCrunchers);
 			} catch (NumberFormatException e) {
 				Alert alert = new Alert(AlertType.ERROR);
@@ -308,5 +385,57 @@ public class MainView {
 
 	public Pane getRight() {
 		return right;
+	}
+
+	public CacheOutput getCacheOutput() {
+		return cacheOutput;
+	}
+
+	public ComboBox<Disk> getDisks() {
+		return disks;
+	}
+
+	public HBox getLeft() {
+		return left;
+	}
+
+	public VBox getFileInput() {
+		return fileInput;
+	}
+
+	public VBox getCruncher() {
+		return cruncher;
+	}
+
+	public Pane getCenter() {
+		return center;
+	}
+
+	public ListView<String> getResults() {
+		return results;
+	}
+
+	public Button getAddFileInput() {
+		return addFileInput;
+	}
+
+	public Button getSumResult() {
+		return sumResult;
+	}
+
+	public ArrayList<FileInputView> getFileInputViews() {
+		return fileInputViews;
+	}
+
+	public static LineChart<Number, Number> getLineChart() {
+		return lineChart;
+	}
+
+	public ArrayList<CounterCruncher> getAvailableCrunchers() {
+		return availableCrunchers;
+	}
+
+	public ObservableList<String> getOutputResultList() {
+		return outputResultList;
 	}
 }
