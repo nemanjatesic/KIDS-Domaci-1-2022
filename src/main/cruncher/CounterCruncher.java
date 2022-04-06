@@ -100,7 +100,7 @@ public class CounterCruncher implements Runnable {
 					}
 
 					threadPoolForCheckingIfTaskIsDone.submit(new CheckIfTaskDone(futureAndFileName,
-							cacheOutput.getResultList(), crunchingFilePaths, fileName));
+							cacheOutput.getResultList(), crunchingFilePaths, fileName, cacheOutput.getInputQue()));
 				}
 				currentFileNameAndContent = null;
 				System.gc();
