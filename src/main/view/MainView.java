@@ -48,7 +48,7 @@ public class MainView {
 	private Button addFileInput, singleResult, sumResult;
 	public static ArrayList<FileInputView> fileInputViews;
 	public static LineChart<Number, Number> lineChart;
-	private ArrayList<CounterCruncher> availableCrunchers;
+	public static ArrayList<CounterCruncher> availableCrunchers;
 
 	private ObservableList<String> outputResultList;
 	public static CacheOutput cacheOutput;

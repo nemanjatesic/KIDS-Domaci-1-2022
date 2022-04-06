@@ -1,5 +1,6 @@
 package main.input;
 
+import main.app.App;
 import main.logger.Logger;
 
 import java.io.*;
@@ -19,6 +20,9 @@ public class FileReader implements Callable<FileNameAndContent> {
             byte[] data = new byte[(int) file.length()];
             fis.read(data);
             return new String(data, StandardCharsets.US_ASCII);
+        } catch (OutOfMemoryError e) {
+            App.finishAppForce();
+            return null;
         } catch (Exception e) {
             return null;
         }

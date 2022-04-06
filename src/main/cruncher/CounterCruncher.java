@@ -175,4 +175,13 @@ public class CounterCruncher implements Runnable {
 			this.outputs.add(cacheOutput);
 		}
 	}
+
+	public void stop() {
+		try {
+			FileNameAndContent currentFileNameAndContent = new FileNameAndContent(App.POISON_PILL_NAME, null);
+			inputQue.put(currentFileNameAndContent);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
 }

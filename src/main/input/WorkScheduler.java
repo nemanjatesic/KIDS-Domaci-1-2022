@@ -50,21 +50,24 @@ public class WorkScheduler extends Task<String> {
 
                 updateMessage(prettyFormatPath);
 
-                Future<FileNameAndContent> fileReadFuture = App.inputThreadPool.submit(new FileReader(new File(currentlyReadingFile)));
-                FileNameAndContent fileContent = fileReadFuture.get();
+                try {
+                    Future<FileNameAndContent> fileReadFuture = App.inputThreadPool.submit(new FileReader(new File(currentlyReadingFile)));
+                    FileNameAndContent fileContent = fileReadFuture.get();
 
-                if (fileContent == null) {
+                    if (fileContent == null) {
+                        updateMessage(INITIAL_STATE_STRING);
+                        break;
+                    }
+
+                    List<CounterCruncher> copyListOfCrunchers = new ArrayList<>(this.crunchers);
+                    for (CounterCruncher cruncher : copyListOfCrunchers) {
+                        cruncher.getInputQue().add(fileContent);
+                    }
+
+                    currentlyReadingFile = INITIAL_STATE_STRING;
                     updateMessage(INITIAL_STATE_STRING);
-                    break;
+                } catch (Exception e) {
                 }
-
-                List<CounterCruncher> copyListOfCrunchers = new ArrayList<>(this.crunchers);
-                for (CounterCruncher cruncher : copyListOfCrunchers) {
-                    cruncher.getInputQue().add(fileContent);
-                }
-
-                currentlyReadingFile = INITIAL_STATE_STRING;
-                updateMessage(INITIAL_STATE_STRING);
             } catch (Exception e) {
                 this.currentlyReadingFile = "Idle";
                 updateMessage(this.currentlyReadingFile);

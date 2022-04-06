@@ -1,5 +1,7 @@
 package main.app;
 
+import javafx.application.Platform;
+import javafx.scene.control.Alert;
 import main.cruncher.CounterCruncher;
 import main.view.CruncherView;
 import main.view.MainView;
@@ -36,31 +38,70 @@ public class App extends Application {
 		Scene scene = new Scene(root, 1300, 800);
 		MainView mainView = new MainView();
 
-		stage.setOnCloseRequest(e -> {
-			if (MainView.fileInputViews != null) {
-				MainView.fileInputViews.forEach(fileInputView -> fileInputView.getFileInput().stop());
-			}
-			if (MainView.cacheOutput != null) {
-				MainView.cacheOutput.stop();
-			}
-
-			try {
-				App.inputThreadPool.awaitTermination(20, TimeUnit.SECONDS);
-				App.outputThreadPool.awaitTermination(20, TimeUnit.SECONDS);
-				App.cruncherThreadPool.awaitTermination(20, TimeUnit.SECONDS);
-
-				if (CounterCruncher.threadPoolForCheckingIfTaskIsDone != null) {
-					CounterCruncher.threadPoolForCheckingIfTaskIsDone.awaitTermination(20, TimeUnit.SECONDS);
-				}
-			} catch (InterruptedException interruptedException) {
-				interruptedException.printStackTrace();
-				System.exit(0);
-			}
-		});
+		stage.setOnCloseRequest(e -> App.finishApp(true));
 
 		mainView.initMainView(root, stage);
 		stage.setScene(scene);
 		stage.show();
     }
 
+    public static void finishApp(boolean showAlert) {
+    	Thread thread = new Thread(() -> {
+    		try {
+				System.out.println("Starting to close the app");
+
+				if (MainView.fileInputViews != null) {
+					MainView.fileInputViews.forEach(fileInputView -> fileInputView.getFileInput().stop());
+				}
+				if (MainView.cacheOutput != null) {
+					MainView.cacheOutput.stop();
+				}
+				if (MainView.availableCrunchers != null) {
+					MainView.availableCrunchers.forEach(CounterCruncher::stop);
+				}
+
+				try {
+					App.inputThreadPool.shutdown();
+					App.outputThreadPool.shutdown();
+					App.cruncherThreadPool.shutdown();
+
+					App.inputThreadPool.awaitTermination(20, TimeUnit.SECONDS);
+					App.outputThreadPool.awaitTermination(20, TimeUnit.SECONDS);
+					App.cruncherThreadPool.awaitQuiescence(20, TimeUnit.SECONDS);
+
+					if (CounterCruncher.threadPoolForCheckingIfTaskIsDone != null) {
+						CounterCruncher.threadPoolForCheckingIfTaskIsDone.shutdown();
+						CounterCruncher.threadPoolForCheckingIfTaskIsDone.awaitTermination(20, TimeUnit.SECONDS);
+					}
+				} catch (InterruptedException interruptedException) {
+					interruptedException.printStackTrace();
+					System.out.println("Force exiting");
+					System.exit(0);
+				}
+			} catch (Exception e) {
+				System.out.println("Force exiting");
+    			System.exit(0);
+			}
+		});
+		thread.start();
+
+		if (showAlert) {
+			Alert alert = new Alert(Alert.AlertType.INFORMATION);
+			alert.setTitle("Closing");
+			alert.setHeaderText("Closing the app...");
+			alert.setContentText(null);
+			alert.showAndWait();
+		}
+	}
+
+	public static void finishAppForce() {
+    	Platform.runLater(() -> {
+			Alert alert = new Alert(Alert.AlertType.INFORMATION);
+			alert.setTitle("Closing");
+			alert.setHeaderText("Closing the app...");
+			alert.setContentText(null);
+			alert.showAndWait();
+			System.exit(0);
+		});
+	}
 }

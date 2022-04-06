@@ -1,6 +1,7 @@
 package main.cruncher;
 
 import javafx.util.Pair;
+import main.app.App;
 import main.logger.Logger;
 
 import java.util.ArrayList;
@@ -111,10 +112,10 @@ public class BagOfWordsTask extends RecursiveTask<Map<ListOfWords<Integer>, Inte
                     }
                 }
             }
-        } catch (Exception e) {
-            if (Logger.debugEnabled) {
-                e.printStackTrace();
-            }
+        } catch (OutOfMemoryError e) {
+            App.finishAppForce();
+        } catch (Exception e){
+            e.printStackTrace();
         } finally {
             try {
                 Thread.sleep(100);

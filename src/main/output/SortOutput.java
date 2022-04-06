@@ -4,6 +4,7 @@ import javafx.application.Platform;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
+import main.app.App;
 import main.cruncher.ListOfWords;
 import main.view.MainView;
 
@@ -22,48 +23,52 @@ public class SortOutput implements Runnable {
 
     @Override
     public void run() {
-        var wrapper = new Object() {
-            int sortCurrentProgressCounter = 0;
-        };
-        Label label = new Label("Sorting");
-        ProgressBar progressBar = new ProgressBar();
-        int resultSize = resultDots.keySet().size();
-        int maxNumberOfCompares = (int) (resultSize * Math.log(resultSize));
+        try {
+            var wrapper = new Object() {
+                int sortCurrentProgressCounter = 0;
+            };
+            Label label = new Label("Sorting");
+            ProgressBar progressBar = new ProgressBar();
+            int resultSize = resultDots.keySet().size();
+            int maxNumberOfCompares = (int) (resultSize * Math.log(resultSize));
 
-        Platform.runLater(() -> {
-            MainView.right.getChildren().add(label);
-            MainView.right.getChildren().add(progressBar);
-        });
+            Platform.runLater(() -> {
+                MainView.right.getChildren().add(label);
+                MainView.right.getChildren().add(progressBar);
+            });
 
-        List<ListOfWords<Integer>> list = resultDots.keySet().stream().sorted((a, b) -> {
-            if (wrapper.sortCurrentProgressCounter++ % sortProgressLimit == 0) {
-                float currentProgress = wrapper.sortCurrentProgressCounter / (maxNumberOfCompares * 1f);
-                Platform.runLater(() -> progressBar.setProgress(currentProgress));
-            }
-
-            return resultDots.get(b) - resultDots.get(a);
-        }).limit(100).collect(Collectors.toList());
-
-        XYChart.Series<Number, Number> series = new XYChart.Series<>();
-        for (int i = 0; i < list.size(); i++) {
-            System.out.print("[");
-            int size = list.get(i).getList().size();
-            for (var k = 0; k < size; k++) {
-                System.out.print(list.get(i).getList().get(k));
-                if (k + 1 != size) {
-                    System.out.print(", ");
+            List<ListOfWords<Integer>> list = resultDots.keySet().stream().sorted((a, b) -> {
+                if (wrapper.sortCurrentProgressCounter++ % sortProgressLimit == 0) {
+                    float currentProgress = wrapper.sortCurrentProgressCounter / (maxNumberOfCompares * 1f);
+                    Platform.runLater(() -> progressBar.setProgress(currentProgress));
                 }
+
+                return resultDots.get(b) - resultDots.get(a);
+            }).limit(100).collect(Collectors.toList());
+
+            XYChart.Series<Number, Number> series = new XYChart.Series<>();
+            for (int i = 0; i < list.size(); i++) {
+                System.out.print("[");
+                int size = list.get(i).getList().size();
+                for (var k = 0; k < size; k++) {
+                    System.out.print(list.get(i).getList().get(k));
+                    if (k + 1 != size) {
+                        System.out.print(", ");
+                    }
+                }
+                System.out.println("] -> " + resultDots.get(list.get(i)));
+
+                series.getData().add(new XYChart.Data<>(i, resultDots.get(list.get(i))));
             }
-            System.out.println("] -> " + resultDots.get(list.get(i)));
 
-            series.getData().add(new XYChart.Data<>(i, resultDots.get(list.get(i))));
+            Platform.runLater(() -> {
+                MainView.lineChart.getData().clear();
+                MainView.lineChart.getData().addAll(series);
+                MainView.right.getChildren().remove(label);
+                MainView.right.getChildren().remove(progressBar);
+            });
+        } catch (OutOfMemoryError e) {
+            App.finishAppForce();
         }
-
-        Platform.runLater(() -> {
-            MainView.lineChart.getData().clear();
-            MainView.lineChart.getData().addAll(series);
-            MainView.right.getChildren().remove(label);
-            MainView.right.getChildren().remove(progressBar);
-        });
     }
 }

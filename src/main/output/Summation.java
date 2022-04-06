@@ -4,6 +4,7 @@ import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
+import main.app.App;
 import main.cruncher.ListOfWords;
 import main.view.MainView;
 
@@ -71,7 +72,11 @@ public class Summation implements Callable<Map<ListOfWords<Integer>, Integer>> {
             });
 
             return toReturn;
+        } catch (OutOfMemoryError e) {
+            App.finishAppForce();
+            return null;
         } catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
     }
